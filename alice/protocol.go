@@ -43,9 +43,10 @@ type Alice interface {
 	// It returns Alice's public spend key
 	GenerateKeys() (*monero.PublicKeyPair, error)
 
-	// SetBobKeys sets Bob's public spend key (to be stored in the contract) and Bob's
-	// private view key (used to check XMR balance before calling Ready())
-	SetBobKeys(*monero.PublicKey, *monero.PrivateViewKey)
+	// SetBobKeys sets Bob's public spend key (to be stored in the contract), Bob's
+	// private view key (used to check XMR balance before calling Ready()), and Bob's
+	// ethereum address (for ensuring he can't be frontrun)
+	SetBobKeys(*monero.PublicKey, *monero.PrivateViewKey, *ethcommon.Address)
 
 	// DeployAndLockETH deploys an instance of the Swap contract and locks `amount` ether in it.
 	DeployAndLockETH(amount uint) (ethcommon.Address, error)
@@ -83,6 +84,7 @@ type alice struct {
 
 	contract   *swap.Swap
 	ethPrivKey *ecdsa.PrivateKey
+	ethBobAddress ethcommon.Address
 	ethClient  *ethclient.Client
 	auth       *bind.TransactOpts
 }
@@ -125,9 +127,10 @@ func (a *alice) GenerateKeys() (*monero.PublicKeyPair, error) {
 	return a.pubkeys, nil
 }
 
-func (a *alice) SetBobKeys(sk *monero.PublicKey, vk *monero.PrivateViewKey) {
+func (a *alice) SetBobKeys(sk *monero.PublicKey, vk *monero.PrivateViewKey, ek *ethcommon.Address) {
 	a.bobSpendKey = sk
 	a.bobViewKey = vk
+	a.ethBobAddress = *ek
 }
 
 func (a *alice) DeployAndLockETH(amount uint) (ethcommon.Address, error) {
@@ -144,7 +147,9 @@ func (a *alice) DeployAndLockETH(amount uint) (ethcommon.Address, error) {
 		a.auth.Value = nil
 	}()
 
-	address, _, swap, err := swap.DeploySwap(a.auth, a.ethClient, pka, pkb)
+	// crypto.PubkeyToAddress(a.pkb)
+
+	address, _, swap, err := swap.DeploySwap(a.auth, a.ethClient, pka, pkb, a.ethBobAddress)
 	if err != nil {
 		return ethcommon.Address{}, err
 	}

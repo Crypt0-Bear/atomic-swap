@@ -92,7 +92,7 @@ func (n *node) handleMessageAlice(who peer.ID, msg net.Message, setupDone chan s
 			return fmt.Errorf("failed to generate Bob's private view keys: %w", err)
 		}
 
-		n.alice.SetBobKeys(sk, vk)
+		n.alice.SetBobKeys(sk, vk, ek)
 		address, err := n.alice.DeployAndLockETH(n.amount)
 		if err != nil {
 			return fmt.Errorf("failed to deploy contract: %w", err)
